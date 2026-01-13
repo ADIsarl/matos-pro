@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>GMAO COMPLETE V8</title>
+    <style>
+        /* --- 1. DESIGN SYSTEM --- */
+        :root {
+            --primary: #1e293b;   /* Bleu Nuit (Cadre) */
+            --accent: #3b82f6;    /* Bleu Action */
+            --wrike: #08cf65;     /* Vert Wrike */
+            --bg: #f1f5f9;        /* Gris Fond */
+            --white: #ffffff;
+            --text: #334155;
+            --border: #e2e8f0;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+        /* --- 2. COMPOSANTS UI --- */
+        
+        /* HEADER FIXE */
+        header {
+            height: 60px; background: var(--white); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 15px; flex-shrink: 0; z-index: 50;
+        }
+        .header-left { display: flex; align-items: center; gap: 15px; }
+        .burger-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--primary); padding: 5px; }
+        .app-title { font-weight: 800; font-size: 1.1rem; color: var(--primary); letter-spacing: -0.5px; }
+        .notif-icon { position: relative; font-size: 1.2rem; cursor: pointer; }
+        .badge { position: absolute; top: -5px; right: -5px; background: red; color: white; font-size: 0.6rem; padding: 2px 5px; border-radius: 10px; display: none; }
+
+        /* MENU LATERAL (Overlay Mobile) */
+        aside {
+            position: fixed; top: 0; left: 0; width: 280px; height: 100%; background: var(--primary); color: white; z-index: 100; transform: translateX(-100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: flex; flex-direction: column; box-shadow: 5px 0 15px rgba(0,0,0,0.3);
+        }
+        aside.open { transform: translateX(0); }
+        .menu-header { padding: 20px; font-weight: 800; font-size: 1.2rem; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; }
+        .nav-link { padding: 16px 20px; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; display: flex; align-items: center; gap: 12px; font-size: 0.95rem; transition: 0.2s; }
+        .nav-link:active, .nav-link.active { background: var(--accent); }
+        .nav-icon { opacity: 0.7; width: 20px; text-align: center; }
+
+        /* ZONE CONTENU */
+        main { flex: 1; overflow-y: auto; padding: 15px; position: relative; scroll-behavior: smooth; }
+
+        /* VUES & ANIMATIONS */
+        .view { display: none; animation: fadeIn 0.3s ease; }
+        .view.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* CARTES & LISTES */
+        .card { background: var(--white); border-radius: 12px; padding: 20px; margin-bottom: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid var(--border); }
+        .card h3 { margin: 0 0 15px 0; font-size: 1rem; color: var(--primary); display: flex; justify-content: space-between; align-items: center; }
+        
+        .list-item { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid var(--border); cursor: pointer; }
+        .list-item:last-child { border-bottom: none; padding-bottom: 0; }
+        .list-item:first-child { padding-top: 0; }
+        .item-title { font-weight: 600; font-size: 1rem; margin-bottom: 4px; }
+        .item-subtitle { font-size: 0.85rem; color: #64748b; }
+        .arrow-right { color: #cbd5e1; font-weight: bold; }
+
+        /* FORMULAIRES */
+        label { display: block; font-size: 0.85rem; font-weight: 700; color: #64748b; margin-bottom: 6px; margin-top: 15px; }
+        input, select, textarea { width: 100%; padding: 14px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 1rem; background: #fff; font-family: inherit; -webkit-appearance: none; }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+        
+        /* BOUTONS */
+        .btn { width: 100%; padding: 16px; border: none; border-radius: 8px; font-size: 1rem; font-weight: 700; color: white; cursor: pointer; margin-top: 20px; transition: 0.2s; display: flex; justify-content: center; align-items: center; gap: 10px; }
+        .btn-primary { background-color: var(--accent); }
+        .btn-primary:active { background-color: #2563eb; transform: scale(0.98); }
+        .btn-success { background-color: var(--wrike); }
+        .btn-ghost { background: transparent; color: var(--primary); border: 1px solid var(--border); margin-top: 10px; }
+
+        /* WRIKE TOGGLE */
+        .wrike-box { background: #ecfdf5; border: 1px solid #6ee7b7; padding: 15px; border-radius: 8px; margin-top: 15px; display: flex; align-items: center; gap: 15px; }
+        .wrike-check { width: 24px; height: 24px; margin: 0; }
+
+        /* LOGIN OVERLAY */
+        #login-overlay { position: fixed; inset: 0; background: var(--primary); z-index: 2000; display: flex; justify-content: center; align-items: center; padding: 20px; }
+        .login-box { background: white; padding: 30px; border-radius: 16px; width: 100%; max-width: 400px; text-align: center; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); }
+
+        /* TOAST NOTIFICATION */
+        #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(100px); background: #333; color: white; padding: 12px 24px; border-radius: 30px; font-size: 0.9rem; z-index: 3000; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); display: flex; align-items: center; gap: 10px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); white-space: nowrap; }
+        #toast.visible { transform: translateX(-50%) translateY(0); }
+        #toast.success { background: var(--wrike); }
+    </style>
+</head>
+<body>
+
+    <div id="login-overlay">
+        <div class="login-box">
+            <h1 style="color:var(--primary); margin-top:0;">MAINTENANCE APP</h1>
+            <p style="color:#64748b; margin-bottom:30px;">Connexion sécurisée Wrike [Bright]</p>
+            
+            <div style="text-align:left; margin-bottom:20px;">
+                <label style="margin-top:0;">Profil Utilisateur</label>
+                <select id="login-role">
+                    <option value="tech">Technicien Terrain</option>
+                    <option value="admin">Propriétaire / Admin</option>
+                </select>
+            </div>
+            
+            <button class="btn btn-primary" onclick="app.login()">Se Connecter</button>
+        </div>
+    </div>
+
+    <aside id="sidebar">
+        <div class="menu-header">
+            <span>MENU</span>
+            <span onclick="app.toggleMenu()" style="cursor:pointer; font-size:1.5rem;">×</span>
+        </div>
+        <div style="flex:1; padding-top:10px;">
+            <div class="nav-link active" onclick="app.nav('dashboard')"><span class="nav-icon">📊</span> Tableau de bord</div>
+            <div class="nav-link" onclick="app.nav('clients')"><span class="nav-icon">🏢</span> Mes Clients</div>
+            <div class="nav-link" onclick="app.nav('machines')"><span class="nav-icon">🚜</span> Parc Matériel</div>
+            <div class="nav-link" onclick="app.nav('intervention')"><span class="nav-icon">🔧</span> Intervention Rapide</div>
+            <div class="nav-link" onclick="app.nav('requests')"><span class="nav-icon">📑</span> Demandes (BE)</div>
+            <div class="nav-link" onclick="location.reload()" style="margin-top:20px; border-top:1px solid rgba(255,255,255,0.1); color:#f87171;"><span class="nav-icon">🚪</span> Déconnexion</div>
+        </div>
+        <div style="padding:20px; font-size:0.8rem; opacity:0.6;">
+            Connecté: <span id="user-display">...</span>
+        </div>
+    </aside>
+
+    <header>
+        <div class="header-left">
+            <button class="burger-btn" onclick="app.toggleMenu()">☰</button>
+            <span class="app-title" id="page-title">Tableau de bord</span>
+        </div>
+        <div class="notif-icon" onclick="app.checkNotifs()">
+            🔔 <span id="badge" class="badge">1</span>
+        </div>
+    </header>
+
+    <main>
+
+        <div id="view-dashboard" class="view active">
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:20px;">
+                <div class="card" style="margin:0; text-align:center; padding:15px;">
+                    <div style="font-size:2rem; font-weight:800; color:var(--accent);" id="stat-inter">0</div>
+                    <div style="font-size:0.75rem; color:#64748b; font-weight:bold;">INTERVENTIONS</div>
+                </div>
+                <div class="card" style="margin:0; text-align:center; padding:15px;">
+                    <div style="font-size:2rem; font-weight:800; color:var(--wrike);">100%</div>
+                    <div style="font-size:0.75rem; color:#64748b; font-weight:bold;">SYNCHRO WRIKE</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Activités Récentes</h3>
+                <div id="dashboard-list">
+                    </div>
+            </div>
+            
+            <button class="btn btn-primary" onclick="app.nav('intervention')">+ Nouvelle Intervention</button>
+        </div>
+
+        <div id="view-clients" class="view">
+            <div class="card">
+                <h3>Répertoire Clients</h3>
+                <input type="text" placeholder="🔍 Rechercher..." style="margin-bottom:15px; padding:10px;">
+                <div id="clients-list">
+                    </div>
+            </div>
+        </div>
+
+        <div id="view-client-detail" class="view">
+            <button class="btn btn-ghost" onclick="app.nav('clients')" style="margin-top:0; margin-bottom:15px;">← Retour Liste</button>
+            <div class="card">
+                <h2 id="cd-nom" style="margin-top:0; color:var(--primary);">Nom Client</h2>
+                <p id="cd-infos" style="color:#64748b;">Adresse...</p>
+                <div style="display:flex; gap:10px; margin-top:15px;">
+                    <button class="btn btn-primary" style="margin:0; font-size:0.9rem; padding:10px;">📞 Appeler</button>
+                    <button class="btn btn-ghost" style="margin:0; font-size:0.9rem; padding:10px;">📧 Email</button>
+                </div>
+            </div>
+            <div class="card">
+                <h3>Machines sur site</h3>
+                <div id="cd-machines">
+                    </div>
+            </div>
+        </div>
+
+        <div id="view-machine-detail" class="view">
+            <button class="btn btn-ghost" onclick="app.backToClient()" style="margin-top:0; margin-bottom:15px;">← Retour Client</button>
+            
+            <div class="card" style="border-left: 5px solid var(--accent);">
+                <div style="display:flex; justify-content:space-between;">
+                    <h2 id="md-nom" style="margin:0; font-size:1.3rem;">Machine</h2>
+                    <span style="background:#dcfce7; color:#15803d; padding:2px 8px; border-radius:10px; font-size:0.7rem; height:fit-content; font-weight:bold;">ACTIF</span>
+                </div>
+                <p id="md-sn" style="color:#64748b; font-weight:600;">S/N: ...</p>
+                
+                <button class="btn btn-primary" onclick="app.startInterventionFromMachine()">🛠️ Faire Intervention</button>
+                <button class="btn btn-ghost" onclick="alert('Demande de vue éclatée envoyée au BE (Wrike #8892)')">📄 Demander Vue Éclatée</button>
+            </div>
+
+            <div class="card">
+                <h3>Historique Maintenance</h3>
+                <div id="md-history">
+                    </div>
+            </div>
+        </div>
+
+        <div id="view-intervention" class="view">
+            <div class="card">
+                <h3 style="border-bottom:1px solid #eee; padding-bottom:10px;">Rapport Technique</h3>
+                <form onsubmit="event.preventDefault(); app.saveIntervention();">
+                    
+                    <label>1. Client</label>
+                    <select id="form-client" onchange="app.filterMachines()" required></select>
+                    
+                    <label>2. Machine</label>
+                    <select id="form-machine" required disabled style="background:#f8fafc;"></select>
+
+                    <div style="display:flex; gap:15px;">
+                        <div style="flex:1;">
+                            <label>Heures</label>
+                            <input type="number" id="form-hours" placeholder="1234">
+                        </div>
+                        <div style="flex:1;">
+                            <label>Date</label>
+                            <input type="date" id="form-date">
+                        </div>
+                    </div>
+
+                    <label>Description des travaux / Panne</label>
+                    <textarea id="form-desc" rows="5" placeholder="Détails techniques..." required></textarea>
+
+                    <label>Photos (Preuve)</label>
+                    <input type="file" multiple accept="image/*" capture="environment">
+
+                    <div class="wrike-box">
+                        <input type="checkbox" id="wrike-sync" checked class="wrike-check">
+                        <div>
+                            <strong style="color:#065f46;">Sync Wrike [Bright]</strong>
+                            <div style="font-size:0.8rem; color:#047857;">Créer tâche & notifier Admin</div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Valider et Clôturer</button>
+                </form>
+            </div>
+        </div>
+
+    </main>
+
+    <div id="toast">✅ Message ici</div>
+
+<script>
+/**
+ * --- GMAO LOGIC CORE ---
+ * Contient toutes les données et la logique de navigation.
+ */
+const app = {
+    // 1. BASE DE DONNÉES SIMULÉE
+    db: {
+        clients: [
+            { id: 1, nom: "GARAGE DU NORD", ville: "Lille", contact: "M. Martin" },
+            { id: 2, nom: "LOGISTIQUE EST", ville: "Strasbourg", contact: "Mme Dubois" },
+            { id: 3, nom: "SUPERMARCHÉ OUEST", ville: "Brest", contact: "M. Lebras" }
+        ],
+        machines: [
+            { id: 101, clientId: 1, nom: "Toyota Tonero", sn: "TY-8894" },
+            { id: 102, clientId: 1, nom: "Fenwick T16", sn: "FK-1120" },
+            { id: 201, clientId: 2, nom: "Nacelle Haulotte", sn: "HA-5566" },
+            { id: 301, clientId: 3, nom: "Compacteur", sn: "CP-9900" }
+        ],
+        history: [
+            { id: 1, machineId: 101, date: "2026-01-10", desc: "Vidange moteur", tech: "Jean" },
+            { id: 2, machineId: 201, date: "2026-01-12", desc: "Changement batterie", tech: "Jean" }
+        ]
+    },
+
+    state: {
+        user: null,
+        currentClientId: null,
+        currentMachineId: null
+    },
+
+    // 2. AUTHENTIFICATION
+    login: function() {
+        const role = document.getElementById('login-role').value;
+        this.state.user = role;
+        document.getElementById('user-display').innerText = role === 'admin' ? "Propriétaire" : "Technicien";
+        
+        // Animation sortie login
+        const overlay = document.getElementById('login-overlay');
+        overlay.style.opacity = '0';
+        setTimeout(() => overlay.style.display = 'none', 300);
+
+        this.init();
+        this.nav('dashboard');
+    },
+
+    // 3. INITIALISATION
+    init: function() {
+        document.getElementById('form-date').valueAsDate = new Date();
+        this.updateStats();
+        
+        // Gestion badge notif
+        if (this.state.user === 'admin') {
+            document.getElementById('badge').style.display = 'block';
+        }
+    },
+
+    // 4. NAVIGATION
+    toggleMenu: function() {
+        document.getElementById('sidebar').classList.toggle('open');
+    },
+
+    nav: function(viewId) {
+        // Cacher vues
+        document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
+        
+        // Afficher vue cible
+        const target = document.getElementById('view-' + viewId);
+        if (target) target.classList.add('active');
+        
+        // Titre Header
+        const titles = { 'dashboard': 'Tableau de bord', 'clients': 'Clients', 'machines': 'Matériel', 'intervention': 'Intervention', 'client-detail': 'Fiche Client', 'machine-detail': 'Fiche Machine' };
+        document.getElementById('page-title').innerText = titles[viewId] || 'GMAO';
+
+        // Actions au chargement
+        if (viewId === 'dashboard') this.renderDashboard();
+        if (viewId === 'clients') this.renderClients();
+        if (viewId === 'intervention') this.setupForm();
+
+        // Fermer menu si ouvert
+        document.getElementById('sidebar').classList.remove('open');
+    },
+
+    // 5. RENDUS VISUELS (Vues)
+    renderDashboard: function() {
+        const container = document.getElementById('dashboard-list');
+        container.innerHTML = '';
+        
+        // Derniers historiques
+        const list = this.db.history.slice(0, 5).reverse();
+        list.forEach(h => {
+            const m = this.db.machines.find(x => x.id === h.machineId);
+            const c = this.db.clients.find(x => x.id === m.clientId);
+            container.innerHTML += `
+                <div class="list-item">
+                    <div>
+                        <div class="item-title">${c.nom}</div>
+                        <div class="item-subtitle">${m.nom} • ${h.desc}</div>
+                    </div>
+                    <div style="font-size:0.7rem; background:#dcfce7; padding:4px 8px; border-radius:10px; color:#15803d; font-weight:bold;">WRIKE</div>
+                </div>`;
+        });
+        this.updateStats();
+    },
+
+    renderClients: function() {
+        const container = document.getElementById('clients-list');
+        container.innerHTML = '';
+        this.db.clients.forEach(c => {
+            const nbMachines = this.db.machines.filter(m => m.clientId === c.id).length;
+            container.innerHTML += `
+                <div class="list-item" onclick="app.openClient(${c.id})">
+                    <div>
+                        <div class="item-title">${c.nom}</div>
+                        <div class="item-subtitle">${c.ville} • ${nbMachines} Machines</div>
+                    </div>
+                    <span class="arrow-right">›</span>
+                </div>`;
+        });
+    },
+
+    openClient: function(id) {
+        this.state.currentClientId = id;
+        const c = this.db.clients.find(x => x.id === id);
+        document.getElementById('cd-nom').innerText = c.nom;
+        document.getElementById('cd-infos').innerText = `${c.ville} • ${c.contact}`;
+
+        // Liste Machines
+        const mContainer = document.getElementById('cd-machines');
+        mContainer.innerHTML = '';
+        const machines = this.db.machines.filter(m => m.clientId === id);
+        
+        machines.forEach(m => {
+            mContainer.innerHTML += `
+                <div class="list-item" onclick="app.openMachine(${m.id})">
+                    <div>
+                        <div class="item-title">${m.nom}</div>
+                        <div class="item-subtitle">S/N: ${m.sn}</div>
+                    </div>
+                    <span class="arrow-right">›</span>
+                </div>`;
+        });
+        
+        this.nav('client-detail');
+    },
+
+    openMachine: function(id) {
+        this.state.currentMachineId = id;
+        const m = this.db.machines.find(x => x.id === id);
+        document.getElementById('md-nom').innerText = m.nom;
+        document.getElementById('md-sn').innerText = "S/N: " + m.sn;
+
+        // Historique Machine
+        const hContainer = document.getElementById('md-history');
+        hContainer.innerHTML = '';
+        const history = this.db.history.filter(h => h.machineId === id).reverse();
+
+        if(history.length === 0) hContainer.innerHTML = '<div style="padding:15px; text-align:center; color:#94a3b8;">Aucun historique.</div>';
+
+        history.forEach(h => {
+            hContainer.innerHTML += `
+                <div class="list-item">
+                    <div>
+                        <div class="item-title">${h.desc}</div>
+                        <div class="item-subtitle">${h.date} • ${h.tech}</div>
+                    </div>
+                </div>`;
+        });
+
+        this.nav('machine-detail');
+    },
+
+    backToClient: function() {
+        this.openClient(this.state.currentClientId);
+    },
+
+    // 6. LOGIQUE INTERVENTION
+    setupForm: function() {
+        const cliSelect = document.getElementById('form-client');
+        cliSelect.innerHTML = '<option value="">-- Sélectionner Client --</option>';
+        this.db.clients.forEach(c => {
+            cliSelect.innerHTML += `<option value="${c.id}">${c.nom}</option>`;
+        });
+        
+        // Reset Machine
+        document.getElementById('form-machine').innerHTML = '';
+        document.getElementById('form-machine').disabled = true;
+        document.getElementById('form-desc').value = '';
+    },
+
+    filterMachines: function() {
+        const cliId = parseInt(document.getElementById('form-client').value);
+        const macSelect = document.getElementById('form-machine');
+        macSelect.innerHTML = '';
+        
+        if (!cliId) {
+            macSelect.disabled = true;
+            return;
+        }
+
+        const machines = this.db.machines.filter(m => m.clientId === cliId);
+        machines.forEach(m => {
+            macSelect.innerHTML += `<option value="${m.id}">${m.nom} (${m.sn})</option>`;
+        });
+        macSelect.disabled = false;
+    },
+
+    startInterventionFromMachine: function() {
+        if (!this.state.currentMachineId) return;
+        this.nav('intervention');
+        
+        // Auto-fill
+        const cliSelect = document.getElementById('form-client');
+        cliSelect.value = this.state.currentClientId;
+        this.filterMachines(); // Charge la liste des machines du client
+        document.getElementById('form-machine').value = this.state.currentMachineId;
+    },
+
+    saveIntervention: function() {
+        const macId = parseInt(document.getElementById('form-machine').value);
+        const desc = document.getElementById('form-desc').value;
+        const date = document.getElementById('form-date').value;
+
+        if (!macId || !desc) return alert("Veuillez remplir la description.");
+
+        // Ajout dans DB Locale
+        this.db.history.push({
+            id: Date.now(),
+            machineId: macId,
+            date: date,
+            desc: desc,
+            tech: "Moi"
+        });
+
+        // Feedback
+        this.showToast("🚀 Envoyé à Wrike + Sauvegardé !");
+        
+        // Retour à la fiche machine
+        this.openMachine(macId);
+    },
+
+    // 7. UTILS
+    updateStats: function() {
+        document.getElementById('stat-inter').innerText = this.db.history.length;
+    },
+
+    showToast: function(msg) {
+        const t = document.getElementById('toast');
+        t.innerText = msg;
+        t.classList.add('visible', 'success');
+        setTimeout(() => t.classList.remove('visible'), 3000);
+    },
+
+    checkNotifs: function() {
+        if(this.state.user === 'admin') {
+            alert("🔔 Notification : Technicien Jean a demandé une validation de devis.");
+            document.getElementById('badge').style.display = 'none';
+        } else {
+            alert("Aucune nouvelle notification.");
+        }
+    }
+};
+</script>
+</body>
+</html>
